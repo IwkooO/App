@@ -80,7 +80,7 @@ def get_sidebar(p='home'):
             [
                 dbc.NavLink("Home", href="/home", active="exact"),
                 dbc.NavLink("Profile", href="/page2", active="exact"),
-                dbc.NavLink("Page 2", href="/page3", active="exact"),
+                dbc.NavLink("Hydration Data", href="/page3", active="exact"),
             ],
             vertical=True,
             pills=True,
@@ -137,13 +137,26 @@ home = html.Div(
 
         #Row 3 Fill your data:
         html.Div([
-            html.Div(className='col-4'),
+            html.Div(className='col-3'),
+            html.Div([
+                html.H1('Your Progress',style={'textAlign':'center'}),
+                dbc.Progress(id="progress",value=50, style={"height": "30px"},striped=True),
+                dbc.Button("Show Remaining Water", id="show-remaining-button", className="mt-3"),
+                html.Div(id="water-message"),
+            ],className='col-6'),
         ],className='row'),
+        #Row 4 Empty Row:
+        get_emptyrow(),
+
+        #Row 5 Check Arduino:
 
         html.Div([
-            dbc.Button("ON",id="lights_on", color="light", className="me-1"),
-            dbc.Button("OFF",id="lights_off", color="light", className="me-1"),
-        ],className='row')
+            html.Div(className='col-3'),
+            html.Div([
+                dbc.Button("Retrieve Bluetooth Data", id="btn_retrieve_bluetooth", className="mt-3"),
+                html.Span(id="output_data_bluetooth", style={"marginLeft": "10px"})
+            ],className='col-6'),
+        ], className='row'),
     ])
 
 
@@ -207,19 +220,18 @@ page2 = html.Div(
                         ],className="mb-3"),
                     dbc.InputGroup(
                         [
-                            dbc.Select(id='Mode',
+                            dbc.Select(id='activity',
                                 options=[
-                                    {"label": "Silent", "value": 1},
-                                    {"label": "Normal", "value": 2},
-                                    {"label": "Off", "value": 3}
+                                    {"label": "Light Activity", "value": 1},
+                                    {"label": "Moderate Activity", "value": 2},
+                                    {"label": "High Activity", "value": 3},
                                 ]
                             ),
-                            dbc.InputGroupText("Mode"),
-                        ],className="mb-3",
-                    ),
-
+                            dbc.InputGroupText("Activity Level"),
+                        ],className="mb-3"),
                     html.Br(),
                     dbc.Button("Submit",id="submit", color="light", className="me-1"),
+                    html.Div(id='water_recommendation_ouput', style={'whiteSpace': 'pre-line'})
                 ]
             )],className='col-4')
         ],className='row')
@@ -235,10 +247,17 @@ page3 = html.Div([
     #####################
     #Row 1 : Nav bar
     get_sidebar(),
-    html.H1('Something else 2',style={'textAlign':'center'}),
-
-    
+    html.H1('Your Hydration Data',style={'textAlign':'center'}),
     #####################
+    #Row 2 : Empty row
+    get_emptyrow(),
+    #####################
+    html.Div([
+        html.Div(className='col-3'),
+        html.Div([dcc.Graph(id='empty-graph')],className='col-6'),
+        html.Div(className='col-2'),
+
+    ],className='row'),
 
 
 ])

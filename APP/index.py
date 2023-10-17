@@ -8,10 +8,10 @@ import callbacks
 import serial
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
+    dcc.Store(id='water-value', data={'total': 2.0}),
     html.Div(id='page-content')
 ])
 
-ser = serial.Serial('COM3', 9600)
 
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
@@ -25,9 +25,11 @@ def display_page(pathname):
     elif pathname == '/page4':
          return page4
     elif pathname == '/page5':
-         return page5
+          return page5
     else:
-        return home # This is the "home page"
+         dash.callback_context.response.set_cookie('home_visited', 'true')
+         return home # This is the "home page"
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', debug=False, use_reloader=False, threaded=True)
+
