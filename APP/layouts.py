@@ -21,6 +21,12 @@ auth=dash_auth.BasicAuth(
 )
 
 
+df_water = pd.read_csv('water_consumption.csv')
+
+df_day = pd.read_csv('water_consumption_day.csv')
+
+
+
 ####################################################################################################
 # 000 - IMPORT DATA
 ####################################################################################################
@@ -240,6 +246,19 @@ page2 = html.Div(
 ####################################################################################################
 # 003 - Page 3
 ####################################################################################################
+trace = go.Scatter(x=df_water['Date'], 
+                   y=df_water['Water Consumption (L)'], 
+                   mode='lines+markers', 
+                   name='Water Consumption')
+
+
+trace_day = go.Scatter(
+    x=df_day['Hour'], 
+    y=df_day['Cumulative Consumption (L)'], 
+    mode='lines+markers',
+    name='Hourly Consumption'
+)
+
 
 page3 = html.Div([
 
@@ -251,13 +270,66 @@ page3 = html.Div([
     #####################
     #Row 2 : Empty row
     get_emptyrow(),
+    html.Div([
+        html.Div(className='col-3'),
+        html.Div([
+            dbc.Button("Show Goal", id="show-chart-button", className="mt-3"),
+        ],className='col-2'),
+    ],className='row'),
     #####################
     html.Div([
         html.Div(className='col-3'),
-        html.Div([dcc.Graph(id='empty-graph')],className='col-6'),
-        html.Div(className='col-2'),
+        html.Div([dcc.Graph(id='empty-graph',
+            figure={
+            'data': [trace],
+            'layout': go.Layout(
+                title='Daily Water Consumption',
+                xaxis=dict(title='Date'),
+                yaxis=dict(title='Water Consumption (L)'))},
+            style={'width': '100%', 'height': '600px', 'display': 'block', 'margin-left': 'auto', 'margin-right': 'auto'}  # Adjust the size and center the graph
+            ),],className='col-8'),
+        #html.Div(className='col-2'),
 
     ],className='row'),
+
+    #Row 4 : Streak
+    html.Div([
+        html.Div(className='col-3'),
+        html.Div([
+            html.Div(id='consecutive-days-output', children='', style={'textAlign': 'center', 'fontSize': 24, 'padding': '20px'}),
+        ],className='col-8'),
+
+    ],className='row'),
+
+    #Row 5 empty
+    html.Br(),
+    html.Br(),
+
+    #Row 6 : Daily Graph
+        html.Div([
+        html.Div(className='col-3'),
+        html.Div([dcc.Graph(id='day-graph',
+            figure={
+            'data': [trace_day],
+            'layout': go.Layout(
+                title='Todays Water Consumption',
+                xaxis=dict(title='Hour'),
+                yaxis=dict(title='Water Consumption (L)'))},
+            style={'width': '100%', 'height': '600px', 'display': 'block', 'margin-left': 'auto', 'margin-right': 'auto'}  # Adjust the size and center the graph
+            ),],className='col-8'),
+        #html.Div(className='col-2'),
+
+    ],className='row'),
+
+    #Row 4 : Streak
+    html.Div([
+        html.Div(className='col-3'),
+        html.Div([
+            html.Div(id='today-output', children='', style={'textAlign': 'center', 'fontSize': 24, 'padding': '20px'}),
+        ],className='col-8'),
+
+    ],className='row'),
+
 
 
 ])

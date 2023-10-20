@@ -23,8 +23,42 @@ from bleak import BleakScanner, BleakClient
 
 
 
+#####################
+## HELPER FUNCTIONS ##
+def compute_consecutive_days_above_goal(df, goal):
+    consecutive_days = 0
+    for consumption in df['Water Consumption (L)'].iloc[::-1]:  # Start from the end
+        if consumption > goal:
+            consecutive_days += 1
+        else:
+            break  # Stop counting if a day below the goal is found
+    return consecutive_days
+
+def get_daily_figure(df_day, goal=3):
+    trace_day = go.Scatter(x=df_day['Time'], 
+                           y=df_day['Cumulative Consumption (L)'], 
+                           mode='lines+markers', 
+                           name='Hourly Consumption')
+    layout_day = go.Layout(title='Today\'s Water Consumption',
+                           xaxis=dict(title='Hour of the Day'),
+                           yaxis=dict(title='Water Consumption (L)'),
+                           shapes=[
+                               dict(
+                                   type='line',
+                                   y0=goal,
+                                   y1=goal,
+                                   x0=df_day['Time'].min(),
+                                   x1=df_day['Time'].max(),
+                                   line=dict(color='Red')
+                               )
+                           ]
+                          )
+    return {'data': [trace_day], 'layout': layout_day}
 
 
+
+df_water=pd.read_csv('water_consumption.csv')
+df_day = pd.read_csv('water_consumption_day.csv')
 ############ HOME PAGE
 
 
@@ -45,75 +79,49 @@ def retrieve_data_bluetooth(n_clicks):
     result = loop.run_until_complete(fetch_data_from_arduino())
     loop.close()
 
-    return f"Data: {result[0]}, Random Number: {result[1]}"
+    value = bytearray(result)
+    drunk_amount = value[0] | (value[1] << 8)
+
+    print("Drunk amount from Arduino:", drunk_amount)
+    return f"Drunk amount from Arduino: {drunk_amount}"
+
+
 
 
 async def fetch_data_from_arduino(retries=3):
     for _ in range(retries):
         devices = await BleakScanner.discover()
-        
-        rp2040_address = None
+
+        hydroMate_address = None
         for device in devices:
-            if device.name == "RP2040":
-                rp2040_address = device.address
+            if device.name == "HydroMate":
+                hydroMate_address = device.address
                 break
 
-        if not rp2040_address:
+        if not hydroMate_address:
             await asyncio.sleep(2)  # Sleep for a bit before retrying
             continue
 
-        client = BleakClient(rp2040_address, timeout=120)
+        client = BleakClient(hydroMate_address, timeout=120)
         try:
             connected = await client.connect()
             if not connected:
                 continue
 
-            services = client.services
-            data = ("Data not found", "")
+            await client.write_gatt_char("00002a37-0000-1000-8000-00805f9b34fb", bytearray([1]))
+            await asyncio.sleep(1)  # Wait a bit to give the Arduino time to respond
+            value = await client.read_gatt_char("00002a37-0000-1000-8000-00805f9b34fb")
 
-            for service in services:
-                if service.uuid == "0000180d-0000-1000-8000-00805f9b34fb":
-                    for char in service.characteristics:
-                        if char.uuid == "00002a37-0000-1000-8000-00805f9b34fb":
-                            value = await client.read_gatt_char(char.uuid)
-                            date, number = value.decode("utf-8").split(',')
-                            data = (date, number)
-                            break
-            return data
+            print("Value before return:", value)
+            return value.splitlines()
+
+
         finally:
             if client.is_connected:
                 await client.disconnect()
             await asyncio.sleep(2)  # This sleep ensures some time gap between subsequent BLE operations
-    return "Could not fetch data after multiple attempts", ""
+    return ["Could not fetch data after multiple attempts"]
 
-
-
-
-
-
-
-
-
-
-
-
-@app.callback(
-    Output('water-message', 'children'),
-    [Input('show-remaining-button', 'n_clicks'),
-     Input('progress', 'value')],
-    State('water-value', 'data')
-)
-def update_water_message(n, percentage_drunk, water_data):
-    if not n:  # This checks if the button hasn't been pressed.
-        return "Press the button to see remaining water."
-    
-    if water_data and isinstance(water_data, dict) and 'total' in water_data:
-        total_water = water_data['total']
-        amount_drunk = (percentage_drunk / 100) * total_water
-        remaining_water = total_water - amount_drunk
-        return f"You still need to drink {remaining_water}L today :)"
-    else:
-        return "No water recommendation data available yet."
 
 
 
@@ -160,4 +168,47 @@ def suggest_drink(Name, age,weight,height,gender,activity,n_clicks):
         message = 'Hello {}! You should drink {:.2f} liters of water per day'.format(Name, drink)
         return message,{'total': drink}
     return "Hello! Please fill in the form above to get your water recommendation", {'total': 2.0}
+
+
+############ PAGE 3 WATER CONSUMPTION
+@app.callback(
+    [Output('empty-graph', 'figure'),
+     Output('consecutive-days-output', 'children')],
+    [Input('show-chart-button', 'n_clicks')],
+    [State('water-value', 'data')]
+)
+def update_graph(n_clicks, data):
+    if not n_clicks:
+        raise dash.exceptions.PreventUpdate  # Do not update if button hasn't been clicked
+
+    # Extract the constant value from the dcc.Store
+    constant_value = data['total']
+    
+    # Define the trace for the water consumption data
+    trace = go.Scatter(x=df_water['Date'], 
+                       y=df_water['Water Consumption (L)'], 
+                       mode='lines+markers', 
+                       name='Water Consumption')
+    
+    # Define the layout with the constant line using 'shapes'
+    layout = go.Layout(title='Daily Water Consumption',
+                       xaxis=dict(title='Date'),
+                       yaxis=dict(title='Water Consumption (L)'),
+                       shapes=[
+                           dict(
+                               type='line',
+                               y0=constant_value,
+                               y1=constant_value,
+                               x0=df_water['Date'].min(),
+                               x1=df_water['Date'].max(),
+                               line=dict(color='Red')
+                           )
+                       ]
+                      )
+    goal = data['total']
+    days_above_goal = compute_consecutive_days_above_goal(df_water, goal)
+    message = f"You've been above your hydration goal for {days_above_goal} consecutive days!" if days_above_goal > 0 else "You're below your hydration goal."
+
+    return {'data': [trace], 'layout': layout}, message
+
 
