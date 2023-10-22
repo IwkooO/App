@@ -19,7 +19,11 @@ import requests
 import os
 import layouts
 import asyncio
+import threading
+import queue
+import orjson
 from bleak import BleakScanner, BleakClient
+import bleak
 
 
 
@@ -65,65 +69,41 @@ df_day = pd.read_csv('water_consumption_day.csv')
 ####
 #ARDUINO DATA
 
-@app.callback(
-    Output("output_data_bluetooth", "children"),
-    [Input("btn_retrieve_bluetooth", "n_clicks")]
-)
-def retrieve_data_bluetooth(n_clicks):
-    if n_clicks is None:
-        return "Press the button to retrieve Bluetooth data."
+# Create a queue to pass data between threads
+import asyncio
+from bleak import BleakScanner, BleakClient
 
-    # Here we move the event loop creation and closing inside the function
+async def retrieve_ble_data():
+    devices = await BleakScanner.discover()
+    hydromate_device = None
+    
+    for device in devices:
+        if device.name == "HydromateBLE":
+            hydromate_device = device
+            break
+
+    if not hydromate_device:
+        return "Device not found."
+
+    async with BleakClient(hydromate_device.address) as client:
+        value = await client.read_gatt_char("0000ABCD-0000-1000-8000-00805f9b34fb")
+        return int.from_bytes(value, byteorder='little', signed=True)
+
+def get_ble_data():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    result = loop.run_until_complete(fetch_data_from_arduino())
-    loop.close()
-
-    value = bytearray(result)
-    drunk_amount = value[0] | (value[1] << 8)
-
-    print("Drunk amount from Arduino:", drunk_amount)
-    return f"Drunk amount from Arduino: {drunk_amount}"
+    return loop.run_until_complete(retrieve_ble_data())
 
 
 
-
-async def fetch_data_from_arduino(retries=3):
-    for _ in range(retries):
-        devices = await BleakScanner.discover()
-
-        hydroMate_address = None
-        for device in devices:
-            if device.name == "HydroMate":
-                hydroMate_address = device.address
-                break
-
-        if not hydroMate_address:
-            await asyncio.sleep(2)  # Sleep for a bit before retrying
-            continue
-
-        client = BleakClient(hydroMate_address, timeout=120)
-        try:
-            connected = await client.connect()
-            if not connected:
-                continue
-
-            await client.write_gatt_char("00002a37-0000-1000-8000-00805f9b34fb", bytearray([1]))
-            await asyncio.sleep(1)  # Wait a bit to give the Arduino time to respond
-            value = await client.read_gatt_char("00002a37-0000-1000-8000-00805f9b34fb")
-
-            print("Value before return:", value)
-            return value.splitlines()
-
-
-        finally:
-            if client.is_connected:
-                await client.disconnect()
-            await asyncio.sleep(2)  # This sleep ensures some time gap between subsequent BLE operations
-    return ["Could not fetch data after multiple attempts"]
-
-
-
+@app.callback(
+    Output("output_data_bluetooth", "children"),
+    Input("btn_retrieve_bluetooth", "n_clicks")
+)
+def update_output(n_clicks):
+    if n_clicks and n_clicks > 0:
+        return get_ble_data()
+    return "Press button to get data."
 
 
 
@@ -173,7 +153,9 @@ def suggest_drink(Name, age,weight,height,gender,activity,n_clicks):
 ############ PAGE 3 WATER CONSUMPTION
 @app.callback(
     [Output('empty-graph', 'figure'),
-     Output('consecutive-days-output', 'children')],
+     Output('consecutive-days-output', 'children'),
+     Output('day-graph', 'figure'),
+     Output('today-output', 'children')],
     [Input('show-chart-button', 'n_clicks')],
     [State('water-value', 'data')]
 )
@@ -205,10 +187,36 @@ def update_graph(n_clicks, data):
                            )
                        ]
                       )
+    trace_hourly = go.Scatter(x=df_day['Hour'], 
+                              y=df_day['Cumulative Consumption (L)'], 
+                              mode='lines+markers', 
+                              name='Hourly Water Consumption')
+    
+    layout_hourly = go.Layout(title='Hourly Water Consumption',
+                              xaxis=dict(title='Hour'),
+                              yaxis=dict(title='Water Consumption (L)'),
+                              shapes=[
+                                  dict(
+                                      type='line',
+                                      y0=constant_value,
+                                      y1=constant_value,
+                                      x0=df_day['Hour'].min(),
+                                      x1=df_day['Hour'].max(),
+                                      line=dict(color='Red')
+                                  )
+                              ]
+                             )
+    
+    hourly_figure = {'data': [trace_hourly], 'layout': layout_hourly}
+
+    # Calculate days above goal
     goal = data['total']
     days_above_goal = compute_consecutive_days_above_goal(df_water, goal)
     message = f"You've been above your hydration goal for {days_above_goal} consecutive days!" if days_above_goal > 0 else "You're below your hydration goal."
 
-    return {'data': [trace], 'layout': layout}, message
+    # Calculate the difference between daily goal and current consumption
+    missing_amount = data['total'] - df_day['Cumulative Consumption (L)'].iloc[-1]
+    missing_message = f"You're missing {missing_amount:.2f}L to reach your goal today." if missing_amount > 0 else "You've reached your goal today!"
 
+    return {'data': [trace], 'layout': layout}, message, hourly_figure, missing_message
 
