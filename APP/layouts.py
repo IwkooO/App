@@ -217,9 +217,9 @@ page2 = html.Div(
                         [
                             dbc.Select(id='gender',
                                 options=[
-                                    {"label": "Male", "value": 1},
-                                    {"label": "Female", "value": 2},
-                                    {"label": "Other", "value": 3},
+                                    {"label": "Male", "value": 1.15},
+                                    {"label": "Female", "value": 1},
+                                    {"label": "Other", "value": 1.01},
                                 ]
                             ),
                             dbc.InputGroupText("Gender"),
@@ -228,9 +228,9 @@ page2 = html.Div(
                         [
                             dbc.Select(id='activity',
                                 options=[
-                                    {"label": "Light Activity", "value": 1},
-                                    {"label": "Moderate Activity", "value": 2},
-                                    {"label": "High Activity", "value": 3},
+                                    {"label": "Light Activity", "value": 0.75},
+                                    {"label": "Moderate Activity", "value": 1},
+                                    {"label": "High Activity", "value": 1.25},
                                 ]
                             ),
                             dbc.InputGroupText("Activity Level"),
@@ -337,34 +337,7 @@ page3 = html.Div([
     
 
 
-####################################################################################################
-# 003 - Page 4
-####################################################################################################
 
-page4 = html.Div([
-
-    #####################
-    #Row 1 : Header
-    get_header(),
-    #####################
-    #Row 2 : Nav bar
-    get_sidebar(), 
-    
-
-
-])
-
-
-
-####################################################################################################
-# 003 - Page 5
-####################################################################################################
-
-page5 = html.Div([
-
-    
-
-])
 
 
 

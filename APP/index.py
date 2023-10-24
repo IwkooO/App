@@ -3,12 +3,13 @@ import dash
 
 from app import app
 from app import server
-from layouts import home, page2, page3,page4,page5
+from layouts import home, page2, page3
 import callbacks
 import serial
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='water-value', data={'total': 2.0}),
+    dcc.Store(id='daily-water-store', data=0.3),
     html.Div(id='page-content')
 ])
 
@@ -23,10 +24,6 @@ def display_page(pathname):
          return page2
     elif pathname == '/page3':
          return page3
-    elif pathname == '/page4':
-         return page4
-    elif pathname == '/page5':
-          return page5
     else:
          dash.callback_context.response.set_cookie('home_visited', 'true')
          return home # This is the "home page"
