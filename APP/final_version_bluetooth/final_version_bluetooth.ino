@@ -207,16 +207,17 @@ void loop() {
         displayFilled = 114;
       }
   display.clearDisplay(); //always output to screen.
-  display.fillRect(0,0,120,32,WHITE); //outline of the battery
-  display.fillRect(2,2,116,28, BLACK);
-  display.fillRect(120,8,10,16, WHITE); // small rectangle at top battery
-  display.fillRect(3,4,displayFilled,24,WHITE); //filling battery
+  display.fillRect(10,0,118,32,WHITE); //outline of the battery
+  display.fillRect(12,2,114,28, BLACK);
+  display.fillRect(0,8,10,16, WHITE); // small rectangle at top battery
+  display.fillRect(128-displayFilled,4,displayFilled,24,WHITE); //filling battery
   display.drawLine(22,2,22,28,BLACK); 
   display.drawLine(42,2,42,28,BLACK);
   display.drawLine(62,2,62,28,BLACK);
   display.drawLine(82,2,82,28,BLACK);
   display.drawLine(102,2,102,28,BLACK);
   display.display();
+
   mass_OLD=mass_NEW;
 
   BLEDevice central = BLE.central();

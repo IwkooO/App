@@ -12,6 +12,7 @@ from dash.dependencies import Input, Output, State
 from dash import ctx
 import dash_table
 import plotly.express as px
+from datetime import datetime
 import base64
 import io
 import serial
@@ -97,15 +98,23 @@ def get_ble_data():
 
 
 @app.callback(
-    Output("output_data_bluetooth", "children"),Output('daily-water-store', 'data'),
+    Output("output_data_bluetooth", "children"),Output('daily-water-store', 'data'),Output('historical-water-store', 'data'),
     Input("btn_retrieve_bluetooth", "n_clicks"),
-    
+    State('historical-water-store', 'data')
 )
-def update_output(n_clicks):
+
+def update_output(n_clicks,historical):
     if n_clicks and n_clicks > 0:
+        historical_df = pd.DataFrame(columns=["Date", "Consumed"])
         water_consumed = get_ble_data()  # Assuming this function retrieves daily water data
-        return f"Water consumed today: {water_consumed} mL", water_consumed
-    return "Press button to get data.", None
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if water_consumed=="Device not found.":
+            water_consumed=0
+        water_consumed=water_consumed/1000
+        historical.append({"Date": current_date, "Consumed": water_consumed})
+        print(historical)
+        return f"Water consumed today: {water_consumed} L", water_consumed,historical
+    return "Press button to get data.", 0,historical
 
 
 
@@ -115,16 +124,19 @@ def update_output(n_clicks):
     Output("progress", "value"),
     Output("water-message", "children"),  # Output for displaying water consumed today
     Input("show-remaining-button", "n_clicks"),
-    State('daily-water-store', 'data')
+    State('daily-water-store', 'data'),
+    State('water-value', 'data')
 )
-def update_progress_bar_and_water_message(n_clicks, daily_water_consumption):
+def update_progress_bar_and_water_message(n_clicks, daily_water_consumption,water_value):
     # Initialize progress_value and water_message with default values
     progress_value = 0.0
     water_message = "Press button to get data."
     
     if n_clicks and n_clicks > 0:
-        print(daily_water_consumption)
-        water_goal = 2000  # Set your daily water goal
+        
+        water_goal = water_value['total']*1000  # Set your daily water goal
+        print(water_goal)
+        daily_water_consumption=daily_water_consumption*1000
         daily_water_consumption = int(daily_water_consumption) if daily_water_consumption else 0  # Convert to integer with a default value of 0
         remaining_water = max(water_goal - daily_water_consumption, 0)
         progress_value = min((daily_water_consumption / water_goal) * 100, 100)
@@ -211,9 +223,10 @@ def suggest_drink(Name, age, weight, height, gender, activity, n_clicks):
      Output('day-graph', 'figure'),
      Output('today-output', 'children')],
     [Input('show-chart-button', 'n_clicks')],
-    [State('water-value', 'data')]
+    [State('water-value', 'data'),
+     State('historical-water-store', 'data')]
 )
-def update_graph(n_clicks, data):
+def update_graph(n_clicks, data, historical_data):
     if not n_clicks:
         raise dash.exceptions.PreventUpdate  # Do not update if button hasn't been clicked
 
@@ -241,36 +254,47 @@ def update_graph(n_clicks, data):
                            )
                        ]
                       )
-    trace_hourly = go.Scatter(x=df_day['Hour'], 
-                              y=df_day['Cumulative Consumption (L)'], 
-                              mode='lines+markers', 
-                              name='Hourly Water Consumption')
+
+    # Extract data from the historical-water-store for the Hourly Water Consumption Graph
+    dates = [entry['Date'] for entry in historical_data]
+    consumed_values = [entry['Consumed'] for entry in historical_data]
+
+    trace_hourly = go.Scatter(
+        x=dates,
+        y=consumed_values,
+        mode='lines+markers',
+        name='Hourly Water Consumption'
+    )
     
-    layout_hourly = go.Layout(title='Hourly Water Consumption',
-                              xaxis=dict(title='Hour'),
-                              yaxis=dict(title='Water Consumption (L)'),
-                              shapes=[
-                                  dict(
-                                      type='line',
-                                      y0=constant_value,
-                                      y1=constant_value,
-                                      x0=df_day['Hour'].min(),
-                                      x1=df_day['Hour'].max(),
-                                      line=dict(color='Red')
-                                  )
-                              ]
-                             )
+    layout_hourly = go.Layout(
+        title='Hourly Water Consumption',
+        xaxis=dict(title='Hour'),
+        yaxis=dict(title='Water Consumption (L)'),
+        shapes=[
+            dict(
+                type='line',
+                y0=constant_value,
+                y1=constant_value,
+                x0=min(dates),
+                x1=max(dates),
+                line=dict(color='Red')
+            )
+        ]
+    )
     
     hourly_figure = {'data': [trace_hourly], 'layout': layout_hourly}
 
-    # Calculate days above goal
+    # Calculate days above goal (keep this logic if you still want it)
     goal = data['total']
     days_above_goal = compute_consecutive_days_above_goal(df_water, goal)
     message = f"You've been above your hydration goal for {days_above_goal} consecutive days!" if days_above_goal > 0 else "You're below your hydration goal."
 
     # Calculate the difference between daily goal and current consumption
-    missing_amount = data['total'] - df_day['Cumulative Consumption (L)'].iloc[-1]
+    # NOTE: This will need to be adjusted if you are not using df_day anymore
+    missing_amount = data['total'] - float(consumed_values[-1])
+
     missing_message = f"You're missing {missing_amount:.2f}L to reach your goal today." if missing_amount > 0 else "You've reached your goal today!"
 
     return {'data': [trace], 'layout': layout}, message, hourly_figure, missing_message
+
 

@@ -310,14 +310,13 @@ page3 = html.Div([
         html.Div(className='col-3'),
         html.Div([dcc.Graph(id='day-graph',
             figure={
-            'data': [trace_day],
+            'data': [],
             'layout': go.Layout(
                 title='Todays Water Consumption',
                 xaxis=dict(title='Hour'),
                 yaxis=dict(title='Water Consumption (L)'))},
             style={'width': '100%', 'height': '600px', 'display': 'block', 'margin-left': 'auto', 'margin-right': 'auto'}  # Adjust the size and center the graph
             ),],className='col-8'),
-        #html.Div(className='col-2'),
 
     ],className='row'),
 

@@ -6,11 +6,16 @@ from app import server
 from layouts import home, page2, page3
 import callbacks
 import serial
+import pandas as pd
+import time
+
+historical=[]
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='water-value', data={'total': 2.0}),
     dcc.Store(id='daily-water-store', data=0.3),
-    html.Div(id='page-content')
+    html.Div(id='page-content'),
+    dcc.Store(id='historical-water-store', data=historical)
 ])
 
 
