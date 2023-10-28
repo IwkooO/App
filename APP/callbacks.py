@@ -71,7 +71,7 @@ df_day = pd.read_csv('water_consumption_day.csv')
 ####
 #ARDUINO DATA
 
-# Create a queue to pass data between threads
+
 
 
 async def retrieve_ble_data():
@@ -106,7 +106,7 @@ def get_ble_data():
 def update_output(n_clicks,historical):
     if n_clicks and n_clicks > 0:
         historical_df = pd.DataFrame(columns=["Date", "Consumed"])
-        water_consumed = get_ble_data()  # Assuming this function retrieves daily water data
+        water_consumed = get_ble_data() 
         current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if water_consumed=="Device not found.":
             water_consumed=0
@@ -122,19 +122,18 @@ def update_output(n_clicks,historical):
 
 @app.callback(
     Output("progress", "value"),
-    Output("water-message", "children"),  # Output for displaying water consumed today
+    Output("water-message", "children"),  
     Input("show-remaining-button", "n_clicks"),
     State('daily-water-store', 'data'),
     State('water-value', 'data')
 )
 def update_progress_bar_and_water_message(n_clicks, daily_water_consumption,water_value):
-    # Initialize progress_value and water_message with default values
     progress_value = 0.0
     water_message = "Press button to get data."
     
     if n_clicks and n_clicks > 0:
         
-        water_goal = water_value['total']*1000  # Set your daily water goal
+        water_goal = water_value['total']*1000  #DAILY WATER GOAL IS FROM OUR DCC STORE
         print(water_goal)
         daily_water_consumption=daily_water_consumption*1000
         daily_water_consumption = int(daily_water_consumption) if daily_water_consumption else 0  # Convert to integer with a default value of 0
@@ -146,12 +145,13 @@ def update_progress_bar_and_water_message(n_clicks, daily_water_consumption,wate
 
 
 ############ PAGE 1 SETTINGS
-Netherlands_activity_level = 0  # Mean physical activity level
-Netherlands_humidity = 70  # Mean humidity in percentage
-Netherlands_athlete_status = 0  # Non-athlete status
-Netherlands_human_development_index = 1  # Middle human development index
-Netherlands_altitude = 0  # Altitude in meters
-Netherlands_temperature = 17  # Mean temperature in °C
+### ALL BELLOW ARE MEAN
+Netherlands_activity_level = 0  
+Netherlands_humidity = 70  
+Netherlands_athlete_status = 0  
+Netherlands_human_development_index = 1  
+Netherlands_altitude = 0  
+Netherlands_temperature = 17  
 
 @app.callback(
     Output('water_recommendation_ouput', 'children'),
@@ -230,16 +230,16 @@ def update_graph(n_clicks, data, historical_data):
     if not n_clicks:
         raise dash.exceptions.PreventUpdate  # Do not update if button hasn't been clicked
 
-    # Extract the constant value from the dcc.Store
+    # Extract data from the historical-water-store for the Daily Water Consumption Graph
     constant_value = data['total']
     
-    # Define the trace for the water consumption data
+    # Trace data from the historical-water-store for the Daily Water Consumption Graph
     trace = go.Scatter(x=df_water['Date'], 
                        y=df_water['Water Consumption (L)'], 
                        mode='lines+markers', 
                        name='Water Consumption')
     
-    # Define the layout with the constant line using 'shapes'
+    # Line chart layout
     layout = go.Layout(title='Daily Water Consumption',
                        xaxis=dict(title='Date'),
                        yaxis=dict(title='Water Consumption (L)'),
@@ -284,12 +284,11 @@ def update_graph(n_clicks, data, historical_data):
     
     hourly_figure = {'data': [trace_hourly], 'layout': layout_hourly}
 
-    # Calculate days above goal (keep this logic if you still want it)
+
     goal = data['total']
     days_above_goal = compute_consecutive_days_above_goal(df_water, goal)
     message = f"You've been above your hydration goal for {days_above_goal} consecutive days!" if days_above_goal > 0 else "You're below your hydration goal."
 
-    # Calculate the difference between daily goal and current consumption
     
     missing_amount = data['total'] - float(consumed_values[-1])
 
