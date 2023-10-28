@@ -290,7 +290,7 @@ def update_graph(n_clicks, data, historical_data):
     message = f"You've been above your hydration goal for {days_above_goal} consecutive days!" if days_above_goal > 0 else "You're below your hydration goal."
 
     # Calculate the difference between daily goal and current consumption
-    # NOTE: This will need to be adjusted if you are not using df_day anymore
+    
     missing_amount = data['total'] - float(consumed_values[-1])
 
     missing_message = f"You're missing {missing_amount:.2f}L to reach your goal today." if missing_amount > 0 else "You've reached your goal today!"
