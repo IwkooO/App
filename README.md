@@ -1,6 +1,5 @@
 # App
-
-Our app code is located in files app.py , index.py, layouts.py and callbacks.py
+App for a arduino tool that measures the amount of water consumed and displays it
 
 Layouts.py describes the overall layout of the page
 
